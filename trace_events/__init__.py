@@ -9,8 +9,8 @@ __author_email__ = 'jonathan.higgs.11@mail.wbs.ac.uk'
 __version__ = '0.1.0'
 
 
-from .profiler import Profiler, profile
+from .profiler import Profiler, counter, exit_counter, profile
 from .timer import EventTimer
 
 
-__all__ = [ Profiler, EventTimer, profile ]
+__all__ = [Profiler, EventTimer, counter, exit_counter, profile]

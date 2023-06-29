@@ -3,7 +3,7 @@ from .utils import perf_time
 
 
 class EventTimer:
-    def __init__(self, name, profiler: Profiler = None, category:str = None, args: dict = None, **kwargs):
+    def __init__(self, name, profiler: Profiler = None, category: str = None, args: dict = None, **kwargs):
         self._name = name
         self._start_time = None
         self._category = None
@@ -17,12 +17,12 @@ class EventTimer:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        stop_time =  perf_time()
+        stop_time = perf_time()
 
         if exc_type is not None:
             return False
 
-        self._profiler.add_complete_event(
+        self._profiler._add_complete_event(
             self._name,
             self._start_time,
             stop_time,

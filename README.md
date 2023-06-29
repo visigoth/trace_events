@@ -34,3 +34,5 @@ if __name__ == '__main__':
 ```
 
 Open up a Chromium browser to [chrome://tracing](chrome://tracing) and load the file to view the trace
+
+![Example image](media/example.png)
