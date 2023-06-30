@@ -1,6 +1,7 @@
 from json import JSONDecoder, JSONEncoder
 
-from .events import Trace, ALL_EVENT_TYPES
+from .events import AllEventTypes
+from .trace import Trace
 
 
 class TraceJsonEncoder(JSONEncoder):
@@ -12,22 +13,21 @@ class TraceJsonEncoder(JSONEncoder):
         if hasattr(obj, 'to_json') and callable(obj.to_json):
             return obj.to_json()
 
-        if isinstance(obj, Trace):
-            return dict(
-                traceEvents=obj.trace_events,
-                otherData=obj.other_data)
-
         return super().default(obj)
 
 
 class TraceJsonDecoder(JSONDecoder):
+    """
+    Converts json representations to python objects
+    """
+
     def __init__(self, *args, **kwargs):
         JSONDecoder.__init__(
             self, object_hook=TraceJsonDecoder.object_hook, *args, **kwargs)
 
     @staticmethod
     def object_hook(data: dict):
-        if Trace.trace_events_field.name in data:
+        if Trace.events_field.name in data:
             return Trace.from_dict(data)
 
         if 'ph' in data:
@@ -36,7 +36,7 @@ class TraceJsonDecoder(JSONDecoder):
                 event_type, str), f'event_type value is {type(event_type).__name__} should be a str'
 
             event_type = next(
-                (t for t in ALL_EVENT_TYPES if event_type == t.event_type), None)
+                (t for t in AllEventTypes if event_type == t.event_type), None)
             if event_type is None:
                 raise TypeError(
                     f'Unable to process event with \'ph\': \'{event_type}\'')

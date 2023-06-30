@@ -3,10 +3,16 @@ from .utils import perf_time
 
 
 class EventTimer:
+    _name: str
+    _category: str
+    _start_time: float
+    _args: dict
+    _profiler: Profiler
+
     def __init__(self, name, profiler: Profiler = None, category: str = None, args: dict = None, **kwargs):
         self._name = name
-        self._start_time = None
         self._category = None
+        self._start_time = None
         self._args = dict() if not args and kwargs else args
         if kwargs:
             self._args.update(**kwargs)

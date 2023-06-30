@@ -1,13 +1,17 @@
 from functools import wraps
 from logging import Logger
 from json import dump, dumps
+import typing as t
 
-from .events import CompleteEvent, CounterEvent, Trace
+from .events import CompleteEvent, CounterEvent
 from .json import TraceJsonEncoder
+from .trace import Trace
 from .utils import perf_time
 
 
 class Topics:
+    _dict: t.Dict[str, int]
+
     def __init__(self):
         self._dict = dict()
 
@@ -23,6 +27,11 @@ class Topics:
 
 class Profiler:
     _global_profiler = None
+
+    _trace: Trace
+    _topics: Topics
+    _start_time: float
+    _logger: Logger
 
     def __init__(self, set_global: bool = True, save_at_exit: bool = False, logger: Logger = None):
         self._trace = Trace()
@@ -51,7 +60,7 @@ class Profiler:
         return self._start_time
 
     def _add_complete_event(self, name, start_time: float, end_time: float, category: str = None, args: dict = None):
-        self._trace.trace_events.append(CompleteEvent(
+        self._trace.events.append(CompleteEvent(
             name,
             start_time - self._start_time,
             end_time - start_time,
@@ -61,7 +70,8 @@ class Profiler:
     def _add_counter_event(self, name, topic: str, timestamp: float = None, category: str = None):
         count = self._topics.increment(topic)
         timestamp = (timestamp or perf_time()) - self._start_time
-        self._trace.trace_events.append(CounterEvent(name, timestamp, category=category, args={ topic: count }))
+        self._trace.events.append(CounterEvent(
+            name, timestamp, category=category, args={topic: count}))
 
     def reset(self):
         self._trace = Trace()
@@ -98,7 +108,7 @@ class Profiler:
             return wrapper
         return decorator
 
-    def profile(self, _func = None, *, category: str = None, event_args: dict = None, **event_kwargs):
+    def profile(self, _func=None, *, category: str = None, event_args: dict = None, **event_kwargs):
         if event_kwargs:
             event_args = event_args or dict()
             event_args.update(event_kwargs)
@@ -112,7 +122,8 @@ class Profiler:
                     return func(*args, **kwargs)
                 finally:
                     stop_time = perf_time()
-                    self._add_complete_event(func, start_time, stop_time, category, event_args)
+                    self._add_complete_event(
+                        func, start_time, stop_time, category, event_args)
             return wrapper
 
         if _func is None:
@@ -143,7 +154,7 @@ def exit_counter(topic: str, category: str = None):
     return decorator
 
 
-def profile(_func = None, *, category: str = None, args: dict = None, **event_kwargs):
+def profile(_func=None, *, category: str = None, args: dict = None, **event_kwargs):
     if event_kwargs:
         args = args or dict()
         args.update(event_kwargs)
@@ -157,7 +168,8 @@ def profile(_func = None, *, category: str = None, args: dict = None, **event_kw
                 return func(*call_args, **call_kwargs)
             finally:
                 stop_time = perf_time()
-                Profiler.global_profiler()._add_complete_event(func, start_time, stop_time, category, args)
+                Profiler.global_profiler()._add_complete_event(
+                    func, start_time, stop_time, category, args)
 
         return wrapper
 
