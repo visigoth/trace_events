@@ -1,65 +1,58 @@
+from datetime import datetime
 from functools import wraps
-from logging import Logger
 from json import dump, dumps
+from logging import Logger
+from os import path, makedirs, remove
 import typing as t
 
+from .context import global_context
 from .events import CompleteEvent, CounterEvent
 from .json import TraceJsonEncoder
 from .trace import Trace
-from .utils import perf_time
+from .utils import fixup_name, perf_time
 
 
 class Topics:
-    _dict: t.Dict[str, int]
+    _counters: t.Dict[str, int]
 
     def __init__(self):
-        self._dict = dict()
+        self._counters = dict()
 
-    def increment(self, topic: str) -> int:
+    def increment(self, topic: str):
         # ToDo: maybe make this atomic with a lock?
-        if topic in self._dict:
-            self._dict[topic] += 1
+        if topic in self._counters:
+            self._counters[topic] += 1
         else:
-            self._dict[topic] = 1
+            self._counters[topic] = 1
 
-        return self._dict[topic]
+    def counters(self) -> dict:
+        return self._counters.copy()
 
 
 class Profiler:
-    _global_profiler = None
-
     _trace: Trace
     _topics: Topics
     _start_time: float
+    _file_name: str | None
     _logger: Logger
 
-    def __init__(self, set_global: bool = True, save_at_exit: bool = False, logger: Logger = None):
+    def __init__(self, file_name: str | None = None, logger: Logger = None):
         self._trace = Trace()
         self._topics = Topics()
         self._start_time = perf_time()
+        self._file_name = file_name
         self._logger = logger
 
-        if set_global:
-            if Profiler._global_profiler and self._logger:
-                self._logger.warn('global profiler is already set')
-            Profiler._global_profiler = self
-
-        if save_at_exit:
-            # ToDo: use at_exit handler
-            raise NotImplementedError()
-
-    @classmethod
-    def global_profiler(cls):
-        if not cls._global_profiler:
-            cls._global_profiler = Profiler(False, False, None)
-
-        return cls._global_profiler
+        self._trace.add_data({
+            "start_time": self._start_time,
+            "timestamp": datetime.now().isoformat()
+        })
 
     @property
     def start_time(self):
         return self._start_time
 
-    def _add_complete_event(self, name, start_time: float, end_time: float, category: str = None, args: dict = None):
+    def _add_complete_event(self, name: str, start_time: float, end_time: float, category: str = None, args: dict = None):
         self._trace.events.append(CompleteEvent(
             name,
             start_time - self._start_time,
@@ -67,23 +60,47 @@ class Profiler:
             category,
             args))
 
-    def _add_counter_event(self, name, topic: str, timestamp: float = None, category: str = None):
-        count = self._topics.increment(topic)
+    def _add_counter_event(self, name: str, topic: str, timestamp: float = None, category: str = None):
+        self._topics.increment(topic)
         timestamp = (timestamp or perf_time()) - self._start_time
         self._trace.events.append(CounterEvent(
-            name, timestamp, category=category, args={topic: count}))
+            name, timestamp, category=category, args=self._topics.counters()))
+
+    def _file_path(self, file_name: str | None) -> str:
+        context = global_context()
+        file_name = file_name or self._file_name or 'trace.json'
+        file_path = context.trace_file_path(file_name)
+
+        if context.overwrite_trace_files:
+            return file_name
+
+        base_name = path.splitext(path.basename(file_path))[0]
+        index = 0
+
+        while path.exists(file_path):
+            file_name = f'{base_name}-{index}.json'
+            file_path = context.trace_file_path(file_name)
+            index += 1
+
+        return file_path
 
     def reset(self):
         self._trace = Trace()
         self._topics = Topics()
         self._start_time = perf_time()
 
-    def save_trace(self, file_name: str = 'trace.json'):
-        with open(file_name, 'w') as file:
-            dump(self._trace, file, cls=TraceJsonEncoder, indent=2)
+    def save_trace(self, file_name: str | None = None):
+        """Saves the trace events into the specified file"""
+        file_path = self._file_path(file_name)
+        dir_path = path.dirname(file_path)
 
-        # Reset the trace so profiler can be reused
-        self.reset()
+        if not path.exists(dir_path):
+            makedirs(dir_path)
+        # elif path.exists(file_path) and global_context().overwrite_trace_files:
+        #     remove(file_path)
+
+        with open(file_path, 'w') as file:
+            dump(self._trace, file, cls=TraceJsonEncoder, indent=2)
 
     def dump_trace(self):
         return dumps(self._trace, cls=TraceJsonEncoder, indent=2)
@@ -123,7 +140,7 @@ class Profiler:
                 finally:
                     stop_time = perf_time()
                     self._add_complete_event(
-                        func, start_time, stop_time, category, event_args)
+                        fixup_name(func), start_time, stop_time, category, event_args)
             return wrapper
 
         if _func is None:
@@ -132,29 +149,80 @@ class Profiler:
         return decorator(_func)
 
 
+_global_profiler: Profiler = None
+
+
+def _init_global_profiler():
+    """Initialize the global profiler"""
+    context = global_context()
+
+    global _global_profiler
+    _global_profiler = Profiler(context.global_trace_file_name)
+
+
+def global_profiler() -> Profiler:
+    """Access the global profiler"""
+    global _global_profiler
+    if not _global_profiler:
+        _init_global_profiler()
+    return _global_profiler
+
+
+def _passthrough(func):
+    return func
+
+
 def counter(topic: str, category: str = None):
+    """
+    Adds a counter trace to the decorated function
+    Traces are added to the global profiler
+    """
+    context = global_context()
+    if not context.enabled:
+        return _passthrough
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            Profiler.global_profiler()._add_counter_event(func, topic, category=category)
+            global_profiler()._add_counter_event(
+                fixup_name(func), topic, category=category)
             return func(*args, **kwargs)
         return wrapper
     return decorator
 
 
 def exit_counter(topic: str, category: str = None):
+    """
+    Adds an exit counter trace to the decorated function
+    Traces added added to the global profiler
+    """
+    context = global_context()
+    if not context.enabled:
+        return _passthrough
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
             finally:
-                Profiler.global_profiler()._add_counter_event(func, topic, category=category)
+                global_profiler()._add_counter_event(
+                    fixup_name(func), topic, category=category)
         return wrapper
     return decorator
 
 
 def profile(_func=None, *, category: str = None, args: dict = None, **event_kwargs):
+    """
+    Adds method call trace to the decorated function
+    Traces added added to the global profiler
+    """
+    context = global_context()
+    if not context.enabled:
+        if _func is None:
+            return _passthrough
+        return _passthrough(_func)
+
     if event_kwargs:
         args = args or dict()
         args.update(event_kwargs)
@@ -168,8 +236,8 @@ def profile(_func=None, *, category: str = None, args: dict = None, **event_kwar
                 return func(*call_args, **call_kwargs)
             finally:
                 stop_time = perf_time()
-                Profiler.global_profiler()._add_complete_event(
-                    func, start_time, stop_time, category, args)
+                global_profiler()._add_complete_event(
+                    fixup_name(func), start_time, stop_time, category, args)
 
         return wrapper
 

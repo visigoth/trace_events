@@ -24,21 +24,24 @@ class TraceMetaData(type):
 
 class Trace(object, metaclass=TraceMetaData):
     events: t.List[AnyEvent]
-    other_data: dict
+    data: dict
 
-    def __init__(self, events: list = None, other_data: dict = None):
+    def __init__(self, events: list = None, data: dict = None):
         self.events = events or []
-        self.other_data = other_data or {}
+        self.data = data or {}
 
     @classmethod
     def from_dict(cls, data: dict):
-        events, other_data = get_fields(Trace, data)
-        return Trace(events=events, other_data=other_data)
+        events, data = get_fields(Trace, data)
+        return Trace(events=events, data=data)
 
     def add(self, event: AnyEvent):
         self.events.append(event)
 
+    def add_data(self, data: dict):
+        self.data.update(data)
+
     def to_json(self) -> dict:
         return dict(
             traceEvents=self.events,
-            otherData=self.other_data)
+            otherData=self.data)

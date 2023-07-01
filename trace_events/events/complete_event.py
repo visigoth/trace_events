@@ -3,7 +3,6 @@ from threading import current_thread
 
 from .event import EventMetaData
 from ..field import Field, get_fields
-from ..utils import fixup_name
 
 
 class CompleteEventMetaData(EventMetaData):
@@ -53,8 +52,8 @@ class CompleteEvent(object, metaclass=CompleteEventMetaData):
     duration: float
     args: dict
 
-    def __init__(self, name, start_time: float, duration: float, category: str = None, args: dict = None, process_id: int = None, thread_id: int = None):
-        self.name = name if type(name) == str else fixup_name(name)
+    def __init__(self, name: str, start_time: float, duration: float, category: str = None, args: dict = None, process_id: int = None, thread_id: int = None):
+        self.name = name
         self.category = category or CompleteEvent.category_field.default
         self.process_id = process_id if process_id is not None else getpid()
         self.thread_id = thread_id if thread_id is not None else current_thread().ident

@@ -3,7 +3,6 @@ from threading import current_thread
 
 from .event import EventMetaData
 from ..field import Field, get_fields
-from ..utils import fixup_name
 
 
 class CounterEventMetaData(EventMetaData):
@@ -40,8 +39,8 @@ class CounterEvent(object, metaclass=CounterEventMetaData):
     timestamp: float
     args: dict
 
-    def __init__(self, name, timestamp: float, category: str = None, process_id: int = None, thread_id: int = None, args: dict = None):
-        self.name = name if type(name) == str else fixup_name(name)
+    def __init__(self, name: str, timestamp: float, category: str = None, process_id: int = None, thread_id: int = None, args: dict = None):
+        self.name = name
         self.category = category or CounterEvent.category_field.default
         self.process_id = process_id if process_id is not None else getpid()
         self.thread_id = thread_id if thread_id is not None else current_thread().ident
