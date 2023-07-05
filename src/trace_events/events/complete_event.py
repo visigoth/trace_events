@@ -63,6 +63,7 @@ class CompleteEvent(object, metaclass=CompleteEventMetaData):
 
     @classmethod
     def from_dict(cls, data: dict):
+        """ Load from  dictionary """
         name, event_type, category, process_id, thread_id, start_time, duration, args = get_fields(
             CompleteEvent, data)
         assert event_type == 'X', 'CompleteEvent::event_type should equal \'X\''
@@ -74,6 +75,7 @@ class CompleteEvent(object, metaclass=CompleteEventMetaData):
         return (self.name, self.category, self.process_id, self.thread_id, self.start_time, self.duration, self.args) == (other.name, other.category, other.process_id, other.thread_id, other.start_time, other.duration, other.args)
 
     def to_json(self) -> dict:
+        """ Convert to json """
         data = dict(
             name=self.name,
             cat=self.category,

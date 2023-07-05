@@ -5,9 +5,7 @@ from .trace import Trace
 
 
 class TraceJsonEncoder(JSONEncoder):
-    """
-    Converts trace objects to json representations
-    """
+    """ Converts trace objects to json representations """
 
     def default(self, obj):
         if hasattr(obj, 'to_json') and callable(obj.to_json):
@@ -17,9 +15,7 @@ class TraceJsonEncoder(JSONEncoder):
 
 
 class TraceJsonDecoder(JSONDecoder):
-    """
-    Converts json representations to python objects
-    """
+    """ Converts json representations to python objects """
 
     def __init__(self, *args, **kwargs):
         JSONDecoder.__init__(

@@ -3,13 +3,17 @@ from logging import Logger
 
 
 class Context:
+    """ Context manages global configuration """
+
     enabled: bool
     trace_file_dir: str
     global_trace_file_name: str
     overwrite_trace_files: bool
     logger: Logger | None
 
-    def __init__(self, enabled: bool, trace_file_dir: str, global_trace_file_name: str, overwrite_trace_files: bool, logger: Logger | None):
+    def __init__(
+            self, enabled: bool, trace_file_dir: str, global_trace_file_name: str,
+            overwrite_trace_files: bool, logger: Logger | None):
         self.enabled = enabled or True
         self.trace_file_dir = trace_file_dir
         self.global_trace_file_name = global_trace_file_name
@@ -35,8 +39,16 @@ def init_context(
 
     file_name = global_trace_file_name or 'trace.json'
 
+    if logger:
+        logger.debug(f'initializing context:')
+        logger.debug(f'  enabled: {enabled}')
+        logger.debug(f'  trace_file_dir: {trace_file_dir}')
+        logger.debug(f'  global_trace_file_name: {file_name}')
+        logger.debug(f'  overwrite_trace_files: {overwrite_trace_files}')
+
     global _gloabl_context
-    _gloabl_context = Context(enabled, file_dir, file_name, overwrite_trace_files, logger)
+    _gloabl_context = Context(
+        enabled, file_dir, file_name, overwrite_trace_files, logger)
 
 
 def global_context() -> Context:

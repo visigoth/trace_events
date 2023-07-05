@@ -1,10 +1,11 @@
-import os
+from os import environ
 import time
 import typing as t
 
 
 def get_environ_flag(name: str, default_value: bool | None = None, required: bool = False) -> bool | None:
-    """Retrieve a environment variable as a boolean flag
+    """
+    Retrieve a environment variable as a boolean flag
     :param name: Name of the environment variable
     :param default_value: Optional default value to return when `Name` is not found
     :param required: Flag to indicate the environment variable is required; will throw error when missing
@@ -12,7 +13,7 @@ def get_environ_flag(name: str, default_value: bool | None = None, required: boo
     true_values = ('TRUE', 'T', '1', 'ON', 'YES', 'Y')
     false_values = ('FALSE', 'F', '0', 'OFF', 'NO', 'N')
 
-    value: str | None = os.getenv(name, None)
+    value: str | None = environ.get(name, None)
 
     if value is None:
         if default_value is not None:
@@ -35,7 +36,7 @@ def get_environ_flag(name: str, default_value: bool | None = None, required: boo
 
 
 def fixup_name(name) -> str:
-    """Fixup non-string names"""
+    """ Fixup non-string names """
     if type(name) == bytes:
         return name.decode('utf-8')
 
@@ -46,5 +47,5 @@ def fixup_name(name) -> str:
 
 
 def perf_time():
-    """returns the perf_counter in microseconds"""
+    """ returns the perf_counter in microseconds """
     return time.perf_counter_ns() * 1e-3

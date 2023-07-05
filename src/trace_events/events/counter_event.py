@@ -49,6 +49,7 @@ class CounterEvent(object, metaclass=CounterEventMetaData):
 
     @staticmethod
     def from_dict(data: dict):
+        """ Load from dictionary """
         name, event_type, category, process_id, thread_id, timestamp, args = get_fields(
             CounterEvent, data)
         assert event_type == 'C', 'CounterEvent::event_type should equal \'C\''
@@ -63,6 +64,7 @@ class CounterEvent(object, metaclass=CounterEventMetaData):
         return (self.name, self.category, self.process_id, self.thread_id, self.timestamp, self.args) == (other.name, other.category, other.process_id, other.thread_id, other.timestamp, other.args)
 
     def to_json(self) -> dict:
+        """ Convert to json """
         data = dict(
             name=self.name,
             cat=self.category,

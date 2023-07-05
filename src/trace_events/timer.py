@@ -4,6 +4,14 @@ from .utils import fixup_name, perf_time
 
 
 class EventTimer:
+    """
+    Times a block of code. Used within a method to add events around arbitary code
+
+    .. code-block:: python
+        with EventTimer('my-block', my_profiler):
+            do_my_thing()
+    """
+
     _name: str
     _category: str
     _start_time: float
@@ -14,10 +22,15 @@ class EventTimer:
         self._name = fixup_name(name)
         self._category = None
         self._start_time = None
+
         self._args = dict() if not args and kwargs else args
         if kwargs:
             self._args.update(**kwargs)
+
         self._profiler = profiler or global_profiler()
+
+        if self._profiler is None:
+            raise RuntimeWarning('Profiler is none')
 
     def __enter__(self):
         self._start_time = perf_time()
@@ -29,18 +42,20 @@ class EventTimer:
         if exc_type is not None:
             return False
 
-        self._profiler._add_complete_event(
-            self._name,
-            self._start_time,
-            stop_time,
-            self._category,
-            self._args)
+        if self._profiler is not None:
+            self._profiler._add_complete_event(
+                self._name,
+                self._start_time,
+                stop_time,
+                self._category,
+                self._args)
 
         return True
 
 
 def timeit(name, profiler: Profiler | None = None, category: str | None = None, args: dict | None = None, **kwargs):
-    """Time a block of code
+    """
+    Times a block of code. Used within a method to add events around arbitary code
 
     .. code-block:: python
         with trace_events.timeit('my-block', category='suspected-slow'):

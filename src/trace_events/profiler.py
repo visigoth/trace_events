@@ -2,7 +2,7 @@ from datetime import datetime
 from functools import wraps
 from json import dump, dumps
 from logging import Logger
-from os import path, makedirs, remove
+from os import path, makedirs
 import typing as t
 
 from .context import global_context
@@ -13,12 +13,15 @@ from .utils import fixup_name, perf_time
 
 
 class Topics:
+    """ Maintains counters """
+
     _counters: t.Dict[str, int]
 
     def __init__(self):
         self._counters = dict()
 
     def increment(self, topic: str):
+        """ Increment the count for the given topic """
         # ToDo: maybe make this atomic with a lock?
         if topic in self._counters:
             self._counters[topic] += 1
@@ -26,6 +29,7 @@ class Topics:
             self._counters[topic] = 1
 
     def counters(self) -> dict:
+        """ Return a copy of the current counters """
         return self._counters.copy()
 
 
@@ -90,20 +94,21 @@ class Profiler:
         self._start_time = perf_time()
 
     def save_trace(self, file_name: str | None = None):
-        """Saves the trace events into the specified file"""
+        """ Saves the trace events into the specified file """
         file_path = self._file_path(file_name)
         dir_path = path.dirname(file_path)
 
         if not path.exists(dir_path):
             makedirs(dir_path)
-        # elif path.exists(file_path) and global_context().overwrite_trace_files:
-        #     remove(file_path)
+
+        if self._logger:
+            self._logger.info(f'writing trace file to: {file_path}')
 
         with open(file_path, 'w') as file:
             dump(self._trace, file, cls=TraceJsonEncoder, indent=2)
 
     def dump_trace(self):
-        return dumps(self._trace, cls=TraceJsonEncoder, indent=2)
+        return dumps(self._trace, cls=TraceJsonEncoder, indent=2, default=str)
 
     def counter(self, topic: str, category: str = None):
         def decorator(func):
@@ -153,7 +158,7 @@ _global_profiler: Profiler = None
 
 
 def _init_global_profiler():
-    """Initialize the global profiler"""
+    """ Initialize the global profiler """
     context = global_context()
 
     global _global_profiler
@@ -161,7 +166,7 @@ def _init_global_profiler():
 
 
 def global_profiler() -> Profiler:
-    """Access the global profiler"""
+    """ Access the global profiler """
     global _global_profiler
     if not _global_profiler:
         _init_global_profiler()
@@ -169,16 +174,25 @@ def global_profiler() -> Profiler:
 
 
 def _passthrough(func):
+    """ Non-decorator to remove extra stack calls when profiler not enabled """
     return func
 
 
+def add_count(name: str, topic: str, category: str = None):
+    """ Manually increment the count for a topic. Traces are added to the global profiler """
+    if not global_context().enabled:
+        return
+
+    profiler = global_profiler()
+    if profiler is None:
+        raise RuntimeWarning('Profiler is none')
+
+    profiler._add_counter_event(fixup_name(name), topic, category=category)
+
+
 def counter(topic: str, category: str = None):
-    """
-    Adds a counter trace to the decorated function
-    Traces are added to the global profiler
-    """
-    context = global_context()
-    if not context.enabled:
+    """ Adds a counter trace to the decorated function. Traces are added to the global profiler """
+    if not global_context().enabled:
         return _passthrough
 
     def decorator(func):
@@ -192,12 +206,8 @@ def counter(topic: str, category: str = None):
 
 
 def exit_counter(topic: str, category: str = None):
-    """
-    Adds an exit counter trace to the decorated function
-    Traces added added to the global profiler
-    """
-    context = global_context()
-    if not context.enabled:
+    """ Adds an exit counter trace to the decorated function. Traces added added to the global profiler """
+    if not global_context().enabled:
         return _passthrough
 
     def decorator(func):
@@ -213,12 +223,8 @@ def exit_counter(topic: str, category: str = None):
 
 
 def profile(_func=None, *, category: str = None, args: dict = None, **event_kwargs):
-    """
-    Adds method call trace to the decorated function
-    Traces added added to the global profiler
-    """
-    context = global_context()
-    if not context.enabled:
+    """ Adds method call trace to the decorated function.Traces added added to the global profiler """
+    if not global_context().enabled:
         if _func is None:
             return _passthrough
         return _passthrough(_func)

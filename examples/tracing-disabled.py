@@ -1,26 +1,17 @@
-from time import sleep
-
 import trace_events
 
 
 trace_events.init_trace(disable=True)
 
 
-def simulate_work():
-    sleep(0.01)
-
-
 @trace_events.profile
 def foo(value):
-    sleep(0.01)
     return value + 1
 
 
 @trace_events.counter(topic='bar calls')
 def bar(value):
-    sleep(0.01)
     value = foo(value)
-    sleep(0.01)
     return value
 
 
@@ -33,4 +24,6 @@ if __name__ == '__main__':
         return value
 
     with trace_events.timeit('main', category='entry'):
-        baz()
+        value = baz()
+
+    print(f'logging-example.py value={value}')

@@ -32,6 +32,7 @@ class Trace(object, metaclass=TraceMetaData):
 
     @classmethod
     def from_dict(cls, data: dict):
+        """ Load from  dictionary """
         events, data = get_fields(Trace, data)
         return Trace(events=events, data=data)
 
@@ -42,6 +43,7 @@ class Trace(object, metaclass=TraceMetaData):
         self.data.update(data)
 
     def to_json(self) -> dict:
+        """ Convert to json """
         return dict(
             traceEvents=self.events,
             otherData=self.data)

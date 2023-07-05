@@ -2,7 +2,7 @@ import typing as t
 
 
 class Field:
-    """Description of an output field"""
+    """ Description of an output field """
 
     data_type: type
     name: str
@@ -17,11 +17,12 @@ class Field:
 
         if self.default is not None:
             assert isinstance(
-                self.default, self.data_type), f'{self.name} default_value should be {data_type.__name__}, but is {type(self.default).__name__}'
+                self.default, self.data_type), \
+                f'{self.name} default_value should be {data_type.__name__}, but is {type(self.default).__name__}'
 
 
 def get_fields(data_type: type, data: dict):
-    """Extracts data fields for the given data_type from a dictionary"""
+    """ Extracts data fields for the given data_type from a dictionary """
 
     assert hasattr(
         data_type, 'fields'), f'type:{data_type.__name__} requires a \'fields\' property'

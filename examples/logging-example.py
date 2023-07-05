@@ -1,12 +1,21 @@
+import logging
 import trace_events
+
+
+logging.basicConfig(
+    handlers=[logging.StreamHandler()],
+    format="[%(levelname)s][%(name)s]  %(message)s",
+    level=logging.DEBUG)
 
 
 # Initialize trace_events with parameters for the global trace
 trace_events.init_trace(
     trace_file_dir='traces',
-    trace_file_name='basic-example.json',
+    trace_file_name='logging-example.json',
     # save_at_exit = True
-    overwrite_trace_files=True)
+    # overwrite_trace_files=False,
+    logger=logging.getLogger("trace_events")
+)
 
 
 # Decorate an entire method call
@@ -37,4 +46,4 @@ if __name__ == '__main__':
         value = baz()
         value += baz()
 
-    print(f'basic-example.py value={value}')
+    print(f'logging-example.py value={value}')
